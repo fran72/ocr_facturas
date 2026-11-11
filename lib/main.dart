@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart'; // Para kIsWeb
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http_parser/http_parser.dart';
 
 void main() {
   runApp(const MyApp());
@@ -36,7 +37,7 @@ class _TestGeminiScreenState extends State<TestGeminiScreen> {
   XFile? _imageFile;
   bool _isLoading = false;
   String _statusMessage = 'Selecciona una imagen para probar el endpoint';
-  Map<String, dynamic>? _jsonResult;
+  dynamic _jsonResult;
 
   final ImagePicker _picker = ImagePicker();
   late Dio _dio;
@@ -55,13 +56,18 @@ class _TestGeminiScreenState extends State<TestGeminiScreen> {
         sendTimeout: const Duration(seconds: 30),
       ),
     );
-    
+
     // Configuración para certificados SSL (solo en plataformas móviles, no en web)
     if (!kIsWeb) {
-      (_dio.httpClientAdapter as dynamic).onHttpClientCreate = (HttpClient client) {
-        client.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
-        return client;
-      };
+      (_dio.httpClientAdapter as dynamic).onHttpClientCreate =
+          (HttpClient client) {
+            client.badCertificateCallback = (
+              X509Certificate cert,
+              String host,
+              int port,
+            ) => true;
+            return client;
+          };
     }
   }
 
@@ -83,18 +89,27 @@ class _TestGeminiScreenState extends State<TestGeminiScreen> {
 
       // 1. Obtenemos los bytes del archivo
       final bytes = await picked.readAsBytes();
-      final filename = picked.name;
+      final originalName = picked.name; // Ej: "image_picker_7C9F...jpg" o puede venir sin extensión limpia
+
+      // Nos aseguramos de extraer una extensión válida o por defecto .jpg
+      String extension = originalName.contains('.')
+          ? originalName.split('.').last.toLowerCase()
+          : 'jpg';
+      String filename =
+          'upload_${DateTime.now().millisecondsSinceEpoch}.$extension';
 
       // 2. Crear FormData con Dio
       FormData formData = FormData.fromMap({
-        'imagen': MultipartFile.fromBytes(bytes, filename: filename),
+        'prompt': 'Extrae todos los textos de esta imagen', // Tu prompt aquí
+        'imagen': MultipartFile.fromBytes(
+          bytes,
+          filename: filename,
+          contentType: MediaType('image', extension == 'png' ? 'png' : 'jpeg'),
+        ),
       });
 
       // 3. Enviar petición POST con Dio
-      final response = await _dio.post(
-        _apiUrl,
-        data: formData,
-      );
+      final response = await _dio.post(_apiUrl, data: formData);
 
       // 4. Procesar respuesta
       if (response.statusCode == 200) {
