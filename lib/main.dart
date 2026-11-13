@@ -100,7 +100,7 @@ class _TestGeminiScreenState extends State<TestGeminiScreen> {
 
       // 2. Crear FormData con Dio
       FormData formData = FormData.fromMap({
-        'prompt': 'Extrae todos los textos de esta imagen', // Tu prompt aquí
+        // 'prompt': 'Extrae todos los textos de esta imagen', // Tu prompt aquí
         'imagen': MultipartFile.fromBytes(
           bytes,
           filename: filename,
